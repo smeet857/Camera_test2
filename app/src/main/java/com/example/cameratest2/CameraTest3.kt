@@ -306,8 +306,12 @@ class CameraTest3 : ComponentActivity() {
     }
 
     private fun tryOpenCamera() {
-        if (surfaceTopReady && surfaceBottomReady) {
-            openCamera()
+        try {
+            if (surfaceTopReady && surfaceBottomReady) {
+                openCamera()
+            }
+        } catch (e: Exception) {
+            Log.e("CameraTest3", "Error in tryOpenCamera", e)
         }
     }
 
@@ -694,7 +698,11 @@ class CameraTest3 : ComponentActivity() {
         deviceId: Int
     ) {
         if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Log.d("CameraTest3", "Camera permission granted")
             tryOpenCamera()
+        } else {
+            Log.w("CameraTest3", "Camera permission denied")
+            Toast.makeText(this@CameraTest3, "Camera permission is required to use this app", Toast.LENGTH_LONG).show()
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults, deviceId)
     }
