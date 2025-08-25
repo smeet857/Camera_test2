@@ -1,6 +1,7 @@
 package com.example.cameratest2
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.ImageFormat
 import android.graphics.SurfaceTexture
@@ -14,9 +15,11 @@ import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
 import android.media.ImageReader
 import android.media.MediaRecorder
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.Looper
+import android.provider.MediaStore
 import android.util.Log
 import android.view.Surface
 import android.view.TextureView
@@ -25,11 +28,13 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.material.tabs.TabLayout
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import kotlin.math.sqrt
 
@@ -187,7 +192,7 @@ class CameraTest3 : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        if(logicalCameraId.isNotEmpty()){
+        if (logicalCameraId.isNotEmpty() && cameraDevice == null) {
             openCamera()
         }
     }
@@ -215,7 +220,10 @@ class CameraTest3 : ComponentActivity() {
         recordButton.visibility = View.GONE
 
         closeCamera()
-        openCamera()
+
+        android.os.Handler(Looper.getMainLooper()).postDelayed({
+            openCamera()
+        },500)
     }
 
     private fun switchToVideoMode(){
@@ -224,7 +232,9 @@ class CameraTest3 : ComponentActivity() {
         recordButton.visibility = View.VISIBLE
 
         closeCamera()
-        openCamera()
+        android.os.Handler(Looper.getMainLooper()).postDelayed({
+            openCamera()
+        },500)
     }
 
     private val zoom1xListener = View.OnClickListener {
@@ -233,7 +243,9 @@ class CameraTest3 : ComponentActivity() {
             zoom1x.isSelected = true
             zoom2x.isSelected = false
             closeCamera()
-            openCamera()
+            android.os.Handler(Looper.getMainLooper()).postDelayed({
+                openCamera()
+            },500)
         }
     }
     private val zoom2xListener = View.OnClickListener {
@@ -242,7 +254,9 @@ class CameraTest3 : ComponentActivity() {
             zoom1x.isSelected = false
             zoom2x.isSelected = true
             closeCamera()
-            openCamera()
+            android.os.Handler(Looper.getMainLooper()).postDelayed({
+                openCamera()
+            },500)
         }
     }
 
@@ -293,7 +307,11 @@ class CameraTest3 : ComponentActivity() {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 1001)
             return
         }
-        cameraManager.openCamera(logicalCameraId, openCameraCallback, null)
+        try {
+            cameraManager.openCamera(logicalCameraId, openCameraCallback, null)
+        } catch (e: Exception) {
+            Log.e("CameraTest3", "Error opening camera", e)
+        }
     }
 
     private val openCameraCallback = object : CameraDevice.StateCallback() {
@@ -315,16 +333,20 @@ class CameraTest3 : ComponentActivity() {
 
     private fun startCameraPreview() {
         try{
+            // Check if camera device is still valid
+            if (cameraDevice == null) {
+                Log.w("CameraTest3", "Camera device is null, cannot start preview")
+                return
+            }
+
             cameraCaptureSession?.close()
             cameraCaptureSession = null
 
-            if(cameraMode == CameraMode.PHOTO){
-                imageReaderTop?.close()
-                imageReaderTop = null
+            imageReaderTop?.close()
+            imageReaderTop = null
 
-                imageReaderBottom?.close()
-                imageReaderBottom = null
-            }
+            imageReaderBottom?.close()
+            imageReaderBottom = null
         }catch (e: Exception){
             e.printStackTrace()
         }
@@ -420,7 +442,7 @@ class CameraTest3 : ComponentActivity() {
         buffer.get(bytes)
         image.close()
 
-        saveImage(bytes, filename = "Top_${topLensName}_${System.currentTimeMillis()}")
+        savePhotoToGallery(bytes,"Top_${topLensName}_${System.currentTimeMillis()}")
     }
 
     private val imageReaderBottomListener : ImageReader.OnImageAvailableListener = ImageReader.OnImageAvailableListener { reader ->
@@ -430,7 +452,8 @@ class CameraTest3 : ComponentActivity() {
         buffer.get(bytes)
         image.close()
 
-        saveImage(bytes, filename = "Bottom_${bottomLensName}_${System.currentTimeMillis()}")
+//        saveImage(bytes, filename = "Bottom_${bottomLensName}_${System.currentTimeMillis()}")
+        savePhotoToGallery(bytes,"Top_${topLensName}_${System.currentTimeMillis()}")
     }
 
     private fun takePicture() {
@@ -563,6 +586,13 @@ class CameraTest3 : ComponentActivity() {
         stopTimer()
 
         try {
+            cameraCaptureSession?.stopRepeating()
+            cameraCaptureSession?.abortCaptures()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        try {
             mediaRecorderTop?.apply {
                 stop()
                 release()
@@ -614,13 +644,22 @@ class CameraTest3 : ComponentActivity() {
     }
 
     private fun setupMediaRecorder(tag: String,w:Int,h:Int): MediaRecorder {
-        val file = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES),
-            "VID_${tag}_${System.currentTimeMillis()}.mp4")
+        val values = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, "VID_${tag}_${System.currentTimeMillis()}.mp4")
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/CameraTest/") // visible in Gallery
+        }
+
+        val resolver = contentResolver
+        val collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val uri = resolver.insert(collection, values)!!
+
+        val fileDescriptor = resolver.openFileDescriptor(uri, "w")!!.fileDescriptor
 
         return MediaRecorder().apply {
             setVideoSource(MediaRecorder.VideoSource.SURFACE)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setOutputFile(file.absolutePath)
+            setOutputFile(fileDescriptor)
             setVideoEncodingBitRate(10_000_000)
             setVideoFrameRate(30)
             setVideoSize(w, h)
@@ -702,4 +741,32 @@ class CameraTest3 : ComponentActivity() {
             e.printStackTrace()
         }
     }
+
+    private fun savePhotoToGallery(bytes: ByteArray,fileName:String) {
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "${fileName}.jpg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraTest/")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+
+        val resolver = contentResolver
+        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val uri = resolver.insert(collection, values)
+
+        uri?.let {
+            resolver.openOutputStream(it).use { out ->
+                out?.write(bytes)
+            }
+
+            values.clear()
+            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+
+            runOnUiThread {
+                Toast.makeText(this, "Photo saved to gallery 📷", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 }
