@@ -112,6 +112,8 @@ class CameraTest3 : ComponentActivity() {
     private var timerRunnable: Runnable? = null
     private var startTime: Long = 0
 
+    private var activityPause = false
+
     private val requiredPermissions = arrayOf(
         Manifest.permission.CAMERA,
         Manifest.permission.RECORD_AUDIO,
@@ -193,14 +195,16 @@ class CameraTest3 : ComponentActivity() {
     }
 
     override fun onPause() {
+        activityPause = true
         closeCamera()
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-        if (logicalCameraId.isNotEmpty() && cameraDevice == null) {
-            openCamera()
+        if (activityPause) {
+            activityPause = false
+            tryOpenCamera()
         }
     }
 
