@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.CameraTest2" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.CameraTest2" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Or if you want Material 2 instead of 3: -->
+        <!-- parent="Theme.MaterialComponents.DayNight.NoActionBar" -->
+
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorOnPrimary">@color/white</item>
+    </style>
+
+    <style name="CameraModeText" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
 </resources>

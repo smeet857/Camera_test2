@@ -3,17 +3,133 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@color/black"
+    android:fitsSystemWindows="true"
     android:orientation="vertical">
 
-    <TextureView
-        android:id="@+id/texture_top"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:gravity="center"
+        android:layout_height="0dp">
 
-<!--    <TextureView-->
-<!--        android:id="@+id/texture_bottom"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_weight="1" />-->
+        <TextureView
+            android:id="@+id/texture_top"
+            android:layout_width="300dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:layout_margin="20dp"
+            />
+
+        <TextView
+            android:id="@+id/top_error_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/white"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            android:fontFamily="sans-serif-black"/>
+
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:layout_height="0dp">
+
+        <TextureView
+            android:id="@+id/texture_bottom"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="20dp"
+            />
+
+        <TextView
+            android:id="@+id/bottom_error_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/white"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            android:fontFamily="sans-serif-black"/>
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/zoomOptions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:orientation="horizontal"
+        android:layout_marginTop="24dp">
+
+        <TextView
+            android:id="@+id/zoom1x"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:background="@drawable/zoom_button_bg"
+            android:text="1x"
+            android:textColor="@color/zoom_text_color"
+            android:textSize="14sp"
+            android:layout_marginEnd="12dp"/>
+
+        <TextView
+            android:id="@+id/zoom2x"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:background="@drawable/zoom_button_bg"
+            android:text="2x"
+            android:textColor="@color/zoom_text_color"
+            android:textSize="14sp"/>
+    </LinearLayout>
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/modeTabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_gravity="bottom|center_horizontal"
+        app:tabIndicatorHeight="0dp"
+        android:background="@color/black"
+        app:tabMode="fixed"
+        app:tabSelectedTextColor="@color/white"
+        app:tabTextAppearance="@style/CameraModeText"
+        app:tabGravity="center"/>
+
+    <TextView
+        android:id="@+id/recordTimer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_gravity="top|center_horizontal"
+        android:text="00:00"
+        android:visibility="gone"
+        android:textSize="18sp"
+        android:textColor="@android:color/holo_red_light"/>
+
+    <ImageButton
+        android:id="@+id/captureButton"
+        android:layout_marginTop="20dp"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="32dp"
+        android:background="@drawable/capture_button_bg"
+        android:contentDescription="Capture Image"/>
+
+    <ImageButton
+        android:id="@+id/recordButton"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="32dp"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:visibility="gone"
+        android:layout_gravity="bottom|center_horizontal"
+        android:background="@drawable/record_button_bg"
+        android:contentDescription="Capture Video"/>
+
 </LinearLayout>
