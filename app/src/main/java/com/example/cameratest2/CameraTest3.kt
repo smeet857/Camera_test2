@@ -112,6 +112,13 @@ class CameraTest3 : ComponentActivity() {
     private var timerRunnable: Runnable? = null
     private var startTime: Long = 0
 
+    private val requiredPermissions = arrayOf(
+        Manifest.permission.CAMERA,
+        Manifest.permission.RECORD_AUDIO,
+//            Manifest.permission.READ_MEDIA_IMAGES,
+//            Manifest.permission.READ_MEDIA_VIDEO
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -302,9 +309,10 @@ class CameraTest3 : ComponentActivity() {
 
     private fun openCamera() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 1001)
+            ActivityCompat.requestPermissions(this, requiredPermissions, 1001)
             return
         }
         try {
@@ -425,7 +433,9 @@ class CameraTest3 : ComponentActivity() {
             this.mainExecutor, object : CameraCaptureSession.StateCallback(){
             override fun onConfigureFailed(p0: CameraCaptureSession) {
                 closeCamera()
-                openCamera()
+                android.os.Handler(Looper.getMainLooper()).postDelayed({
+                    openCamera()
+                },500)
             }
 
             override fun onConfigured(session: CameraCaptureSession) {
@@ -562,7 +572,9 @@ class CameraTest3 : ComponentActivity() {
                     zoom1x.visibility = View.VISIBLE
                     zoom2x.visibility = View.VISIBLE
                     closeCamera()
-                    openCamera()
+                    android.os.Handler(Looper.getMainLooper()).postDelayed({
+                        openCamera()
+                    },500)
                 }
 
                 override fun onConfigured(session: CameraCaptureSession) {
@@ -657,6 +669,7 @@ class CameraTest3 : ComponentActivity() {
         val fileDescriptor = resolver.openFileDescriptor(uri, "w")!!.fileDescriptor
 
         return MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
             setVideoSource(MediaRecorder.VideoSource.SURFACE)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setOutputFile(fileDescriptor)
@@ -664,6 +677,7 @@ class CameraTest3 : ComponentActivity() {
             setVideoFrameRate(30)
             setVideoSize(w, h)
             setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+            setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT)
             setOrientationHint(getJpegOrientation())
             prepare()
         }
