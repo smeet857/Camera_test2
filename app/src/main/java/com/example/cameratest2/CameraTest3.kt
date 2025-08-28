@@ -3,6 +3,7 @@ package com.example.cameratest2
 import android.Manifest
 import android.content.ContentValues
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.graphics.ImageFormat
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.CameraCaptureSession
@@ -21,10 +22,12 @@ import android.os.Environment
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
+import android.util.Range
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -32,6 +35,11 @@ import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.children
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.LinearSnapHelper
+import androidx.recyclerview.widget.PagerSnapHelper
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
 import java.io.File
 import java.io.FileInputStream
@@ -94,6 +102,7 @@ class CameraTest3 : ComponentActivity() {
     private lateinit var recordButton: ImageButton
     private lateinit var modeTabLayout: TabLayout
     private  lateinit var recordTime : TextView
+    private  lateinit var fpsContainer : LinearLayout
 
 
     private var surfaceTopReady = false
@@ -113,6 +122,8 @@ class CameraTest3 : ComponentActivity() {
     private var startTime: Long = 0
 
     private var activityPause = false
+
+    private var selectedFps = 30
 
     private val requiredPermissions = arrayOf(
         Manifest.permission.CAMERA,
@@ -172,6 +183,7 @@ class CameraTest3 : ComponentActivity() {
                 recordTime = findViewById(R.id.recordTimer)
 
                 modeTabLayout = findViewById(R.id.modeTabLayout)
+                fpsContainer = findViewById(R.id.fpsContainer)
 
                 modeTabLayout.addTab(modeTabLayout.newTab().setText("PHOTO"))
                 modeTabLayout.addTab(modeTabLayout.newTab().setText("VIDEO"))
@@ -235,6 +247,8 @@ class CameraTest3 : ComponentActivity() {
         android.os.Handler(Looper.getMainLooper()).postDelayed({
             openCamera()
         },500)
+
+        fpsContainer.visibility = View.GONE
     }
 
     private fun switchToVideoMode(){
@@ -246,6 +260,8 @@ class CameraTest3 : ComponentActivity() {
         android.os.Handler(Looper.getMainLooper()).postDelayed({
             openCamera()
         },500)
+
+        setFpsRange(topLensId,bottomLensId)
     }
 
     private val zoom1xListener = View.OnClickListener {
@@ -257,6 +273,10 @@ class CameraTest3 : ComponentActivity() {
             android.os.Handler(Looper.getMainLooper()).postDelayed({
                 openCamera()
             },500)
+
+            if(cameraMode == CameraMode.VIDEO){
+                setFpsRange(topLensId,bottomLensId)
+            }
         }
     }
     private val zoom2xListener = View.OnClickListener {
@@ -268,6 +288,10 @@ class CameraTest3 : ComponentActivity() {
             android.os.Handler(Looper.getMainLooper()).postDelayed({
                 openCamera()
             },500)
+
+            if(cameraMode == CameraMode.VIDEO){
+                setFpsRange(topLensId,bottomLensId)
+            }
         }
     }
 
@@ -494,26 +518,13 @@ class CameraTest3 : ComponentActivity() {
         }
     }
 
-    private fun saveImage(bytes: ByteArray,filename:String) {
-
-        val picturesDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        if (!picturesDir!!.exists()) picturesDir.mkdirs()
-
-        val file = File(picturesDir, "${filename}.jpg")
-        FileOutputStream(file).use { it.write(bytes) }
-        Log.d("Save Path", "Saved: ${file.absolutePath}")
-
-        runOnUiThread {
-            Toast.makeText(this, "Saved: ${file.absolutePath}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     private fun startRecording() {
         isRecording = true
         recordButton.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_action_stop_recording))
         modeTabLayout.visibility = View.GONE
         zoom1x.visibility = View.GONE
         zoom2x.visibility = View.GONE
+        fpsContainer.visibility = View.GONE
 
         val configs = mutableListOf<OutputConfiguration>()
 
@@ -603,6 +614,7 @@ class CameraTest3 : ComponentActivity() {
         modeTabLayout.visibility = View.VISIBLE
         zoom1x.visibility = View.VISIBLE
         zoom2x.visibility = View.VISIBLE
+        fpsContainer.visibility = View.VISIBLE
         stopTimer()
 
         try {
@@ -682,7 +694,7 @@ class CameraTest3 : ComponentActivity() {
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setOutputFile(fileDescriptor)
             setVideoEncodingBitRate(10_000_000)
-            setVideoFrameRate(30)
+            setVideoFrameRate(selectedFps)
             setVideoSize(w, h)
             setVideoEncoder(MediaRecorder.VideoEncoder.H264)
             setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT)
@@ -752,6 +764,9 @@ class CameraTest3 : ComponentActivity() {
 
     private fun closeCamera() {
         try {
+            cameraCaptureSession?.stopRepeating()
+            cameraCaptureSession?.abortCaptures()
+
             cameraCaptureSession?.close()
             cameraCaptureSession = null
 
@@ -795,4 +810,66 @@ class CameraTest3 : ComponentActivity() {
         }
     }
 
+    private fun setFpsRange(topLensId: String,bottomLensId : String) {
+        android.os.Handler(Looper.getMainLooper()).postDelayed({
+            val commonFps = getCommonFps(listOf(topLensId, bottomLensId) )
+
+            fpsContainer.removeAllViews()
+
+            commonFps.forEach { fps ->
+                val button = TextView(this).apply {
+                    text = "${fps} fps"
+                    setPadding(24, 12, 24, 12)
+                    setBackgroundResource(R.drawable.fps_item_background) // same rounded bg
+                    setTextColor(Color.WHITE)
+                    textSize = 14f
+                    isSelected = selectedFps == fps
+                    setOnClickListener {
+                        fpsContainer.children.forEach { it.isSelected = false }
+                        isSelected = true
+                        selectedFps = fps
+                        runOnUiThread{
+                            Toast.makeText(context, "Selected $fps fps", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                val params = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    marginStart = 12
+                    marginEnd = 12
+                }
+                fpsContainer.addView(button, params)
+            }
+
+            fpsContainer.visibility = View.VISIBLE
+        },500)
+
+    }
+
+    private fun getCommonFps(cameraIds: List<String>): List<Int> {
+        if (cameraIds.isEmpty()) return emptyList()
+
+        val fpsLists = cameraIds.map {getFixedFpsFromLens(it).toSet() }
+
+        // Intersection of all sets
+        return fpsLists.reduce { acc, set -> acc.intersect(set) }.toList().sorted()
+    }
+
+    private fun getFixedFpsFromLens(cameraId: String): List<Int> {
+        try{
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+
+            val fpsRanges = characteristics.get(
+                CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES
+            ) ?: return emptyList()
+
+            // Keep only fixed fps values (min == max)
+            return fpsRanges.filter { it.lower == it.upper }.map { it.upper }
+        }catch (e:Exception){
+            Log.e("Get Fps From Lens","Error : $e")
+            return emptyList()
+        }
+    }
 }
